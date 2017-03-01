@@ -70,7 +70,6 @@ const todaySummary = function () {
     request({url: WORKING_SESSIONS, qs: parameters, headers: headers}, function (error, response, body) {
         const data = JSON.parse(body);
         const current = R.head(data.working_sessions);
-
         if (current) {
             const breaks = current.breaks;
             var breakMinutes = 0;
@@ -93,10 +92,10 @@ const todaySummary = function () {
 
             if (start && end) {
                 const timeString = getTimeDiffText(start, end, breakMinutes);
-                console.log('Worked from', start.format('HH:MM'), 'to', end.format('HH:MM'), 'workd for', timeString);
+                console.log('Worked from', start.format('HH:mm'), 'to', end.format('HH:mm'), 'workd for', timeString);
             } else if (start) {
                 const timeString = getTimeDiffText(start, NOW, breakMinutes);
-                console.log('Started at', start.format('HH:MM'), 'worked for', timeString);
+                console.log('Started at', start.format('HH:mm'), 'worked for', timeString);
             } else {
                 console.error('Something went wrong');
             }
