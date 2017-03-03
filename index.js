@@ -113,7 +113,7 @@ var todaySummary = function (simple) {
                 if (start && end) {
                     var text = getHumanReadableTextFromMinutes(getDifferenceInMinutes(start, end) - breakMinutes);
                     var overtimeText = getHumanReadableTextFromMinutes(getDifferenceInMinutes(start, end) - MINUTES_TO_WORK);
-                    console.log(text, overtimeText);
+                    console.log(text, '('+ overtimeText + ')');
                 } else {
                     console.error('Something went wrong');
                 }
