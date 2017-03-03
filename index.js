@@ -38,6 +38,12 @@ var createParameters = function (parameters) {
 var HOURS_TO_WORK = 8;
 var MINUTES_TO_WORK = HOURS_TO_WORK * 60;
 
+function padLeft(num, size) {
+    var s = num + "";
+    while (s.length < size) s = "0" + s;
+    return s;
+}
+
 var getDifferenceInMinutesText = function (start, end, breakMinutes) {
     if (breakMinutes) {
         if (start > end) {
@@ -59,9 +65,9 @@ var getHumanReadableTextFromMinutes = function (minutes) {
     var negative = duration < 0;
 
     return (negative ? '-' : '') + [
-            Math.abs(duration.hours()),
-            Math.abs(duration.minutes()),
-            Math.abs(duration.seconds())
+            padLeft(Math.abs(duration.hours()), 2),
+            padLeft(Math.abs(duration.minutes()), 2),
+            padLeft(Math.abs(duration.seconds()), 2)
         ].join(':');
 };
 
@@ -70,8 +76,7 @@ const getDifferenceInMinutes = function (start, end) {
     return Math.floor(Math.abs(duration.asMinutes()));
 };
 
-var todaySummary = function () {
-    console.log('Build summary...');
+var todaySummary = function (simple) {
     var parameters = createParameters({
         range_start: moment().utc().toISOString(),
         range_end: moment().add(1, 'days').utc().toISOString()
@@ -102,14 +107,22 @@ var todaySummary = function () {
             }
 
             var start = current.starts_at ? moment(current.starts_at) : null;
-            var end = current.ends_at ? moment(current.ends_at) : null;
+            var end = current.ends_at ? moment(current.ends_at) : moment();
 
-            if (start && end) {
-                console.log('Worked from', start.format('HH:mm'), 'to', end.format('HH:mm'), 'worked for', getDifferenceInMinutesText(start, end, breakMinutes));
-            } else if (start) {
-                console.log('Started at', start.format('HH:mm'), 'worked for', getDifferenceInMinutesText(start, moment(), breakMinutes));
+            if (simple) {
+                if (start && end) {
+                    var text = getHumanReadableTextFromMinutes(getDifferenceInMinutes(start, end) - breakMinutes);
+                    var overtimeText = getHumanReadableTextFromMinutes(getDifferenceInMinutes(start, end) - MINUTES_TO_WORK);
+                    console.log(text, overtimeText);
+                } else {
+                    console.error('Something went wrong');
+                }
             } else {
-                console.error('Something went wrong');
+                if (start && end) {
+                    console.log(start.format('HH:mm'), 'to', end.format('HH:mm'), '(' + getHumanReadableTextFromMinutes(getDifferenceInMinutes(start, end) - breakMinutes) + ')');
+                } else {
+                    console.error('Something went wrong');
+                }
             }
         } else {
             console.error('Not worked today');
@@ -224,6 +237,9 @@ const handleCommand = function (cmd) {
             break;
         case 'today':
             todaySummary();
+            break;
+        case 'bitbar':
+            todaySummary(true);
             break;
         default:
             break;
