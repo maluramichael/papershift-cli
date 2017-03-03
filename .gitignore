@@ -63,3 +63,4 @@ typings/
 .idea/
 
 /.idea/vcs.xml
+.vscode
