@@ -64,3 +64,4 @@ typings/
 
 /.idea/vcs.xml
 .vscode
+.DS_Store

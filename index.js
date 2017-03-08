@@ -74,7 +74,7 @@ var getHumanReadableTextFromMinutes = function (minutes, colored) {
     if (colored) {
         return chalk[negative ? 'red' : 'green'](value);
     } else {
-        return (negative ? '-' : ' ') + value;
+        return (negative ? '-' : '') + value;
     }
 };
 
@@ -119,14 +119,14 @@ var todaySummary = function (simple) {
             if (simple) {
                 if (start && end) {
                     var text = getHumanReadableTextFromMinutes(getDifferenceInMinutes(start, end) - breakMinutes);
-                    var overtimeText = getHumanReadableTextFromMinutes(getDifferenceInMinutes(start, end) - MINUTES_TO_WORK);
+                    var overtimeText = getHumanReadableTextFromMinutes(getDifferenceInMinutes(start, end) - MINUTES_TO_WORK, true);
                     console.log(text, '(' + overtimeText + ')');
                 } else {
                     console.error('Something went wrong');
                 }
             } else {
                 if (start && end) {
-                    console.log(start.format(DATE_FORMAT), 'to', end.format(DATE_FORMAT), '(' + getHumanReadableTextFromMinutes(getDifferenceInMinutes(start, end) - breakMinutes) + ')');
+                    console.log(start.format(DATE_FORMAT), 'to', end.format(DATE_FORMAT), '(' + getHumanReadableTextFromMinutes(getDifferenceInMinutes(start, end) - breakMinutes, true) + ')');
                 } else {
                     console.error('Something went wrong');
                 }
@@ -212,8 +212,15 @@ var overtimeThisMonth = function (done) {
 
 const handleCommand = function (cmd) {
     switch (cmd) {
+        case 'today':
+            todaySummary();
+            break;
+        case 'bitbar':
+            todaySummary(true);
+            break;
         case 'overtime':
-            var result = overtimeThisMonth(function (result) {
+        default:
+            overtimeThisMonth(function (result) {
                 var table = new Table({
                     head: ['Date', 'Weekday', 'Worked', 'Overtime'],
                     colWidths: [12, 15, 9, 11],
@@ -245,22 +252,20 @@ const handleCommand = function (cmd) {
                 }, details);
 
                 console.log(table.toString());
-                console.log('Overtime this month:', getHumanReadableTextFromMinutes(result.overtimeInMinutes, true));
+                console.log('Summary:', getHumanReadableTextFromMinutes(result.overtimeInMinutes, true));
             });
 
-            break;
-        case 'today':
-            todaySummary();
-            break;
-        case 'bitbar':
-            todaySummary(true);
-            break;
-        default:
             break;
     }
 };
 
-program.version('0.0.1')
+var pkg = require('./package.json');
+
+program.version(pkg.version)
     .arguments('[cmd]')
     .action(handleCommand)
     .parse(process.argv);
+
+if (process.argv.length === 2) {
+    handleCommand('overtime');
+}

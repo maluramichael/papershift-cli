@@ -1,13 +1,7 @@
 # papershift-cli
 
-[![npm](https://img.shields.io/npm/dm/papershift-cli.svg?maxAge=2592000)](https://www.npmjs.com/package/papershift-cli)
-[![npm](https://img.shields.io/npm/v/papershift-cli.svg?maxAge=2592000)](https://www.npmjs.com/package/papershift-cli)
+![Screenshot](https://raw.githubusercontent.com/maluramichael/papershift-cli/master/image.png)
 
-```sh
-$ papershift-cli
-$ Build summary...
-$ Started at 07:36 worked for 7:44:47
-```
 
 ## Installation
 
