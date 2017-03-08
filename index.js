@@ -202,7 +202,7 @@ var overtimeThisMonth = function (done) {
         }, data.working_sessions);
 
         var overtimeInMinutes = R.reduce(function (acc, session) {
-            acc += session.overtime;
+            acc += session.overtimeInMinutes;
             return acc;
         }, 0, details);
 
