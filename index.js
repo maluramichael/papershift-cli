@@ -37,6 +37,7 @@ var createParameters = function (parameters) {
 
 var HOURS_TO_WORK = 8;
 var MINUTES_TO_WORK = HOURS_TO_WORK * 60;
+var DATE_FORMAT = 'HH:mm';
 
 function padLeft(num, size) {
     var s = num + "";
@@ -66,8 +67,7 @@ var getHumanReadableTextFromMinutes = function (minutes) {
 
     return (negative ? '-' : '') + [
             padLeft(Math.abs(duration.hours()), 2),
-            padLeft(Math.abs(duration.minutes()), 2),
-            padLeft(Math.abs(duration.seconds()), 2)
+            padLeft(Math.abs(duration.minutes()), 2)
         ].join(':');
 };
 
@@ -119,7 +119,7 @@ var todaySummary = function (simple) {
                 }
             } else {
                 if (start && end) {
-                    console.log(start.format('HH:mm'), 'to', end.format('HH:mm'), '(' + getHumanReadableTextFromMinutes(getDifferenceInMinutes(start, end) - breakMinutes) + ')');
+                    console.log(start.format(DATE_FORMAT), 'to', end.format(DATE_FORMAT), '(' + getHumanReadableTextFromMinutes(getDifferenceInMinutes(start, end) - breakMinutes) + ')');
                 } else {
                     console.error('Something went wrong');
                 }
@@ -212,6 +212,10 @@ const handleCommand = function (cmd) {
                     colWidths: [30, 30, 30, 30]
                 });
 
+                var details = R.sortBy(function(detail){
+                    return moment(detail.session.starts_at);
+                }, result.details);
+
                 R.forEach(function (detail) {
                     var session = detail.session;
                     var date = moment(session.starts_at).utc(true).format('DD.MM.YYYY');
@@ -228,7 +232,7 @@ const handleCommand = function (cmd) {
                         worked,
                         overtime
                     ])
-                }, result.details);
+                }, details);
 
                 console.log(table.toString());
                 console.log('Overtime this month:', getHumanReadableTextFromMinutes(result.overtimeInMinutes));
