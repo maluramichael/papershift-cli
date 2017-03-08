@@ -173,6 +173,8 @@ const getOvertimeFromSession = function (session) {
     const workTimeInMinutes = getWorkTimeInMinutes(session);
 
     const actualWorkTime = workTimeInMinutes - breaksInMinutes;
+
+    console.log(workTimeInMinutes, breaksInMinutes, actualWorkTime, actualWorkTime - MINUTES_TO_WORK);
     return actualWorkTime - MINUTES_TO_WORK;
 };
 
@@ -194,7 +196,8 @@ var overtimeThisMonth = function (done) {
         var details = R.map(function (session) {
             return {
                 session: session,
-                overtime: getOvertimeFromSession(session)
+                breaksInMinutes: getBreaksInMinutes(session.breaks),
+                overtimeInMinutes: getOvertimeFromSession(session)
             };
         }, data.working_sessions);
 
@@ -226,7 +229,6 @@ const handleCommand = function (cmd) {
                     colWidths: [12, 15, 9, 11],
                     colAligns: ['middle', 'middle', 'middle', 'middle'],
                     style: {compact: true, 'padding-left': 1, head: ['white']}
-
                 });
 
                 var details = R.sortBy(function (detail) {
@@ -238,7 +240,8 @@ const handleCommand = function (cmd) {
                     var date = moment(session.starts_at).utc(true).format('DD.MM.YYYY');
                     var weekday = moment(session.starts_at).utc(true).format('dddd');
                     var worked = getDifferenceInMinutes(moment(session.starts_at), session.ends_at ? moment(session.ends_at) : moment());
-                    var overtime = detail.overtime;
+                    worked -= detail.breaksInMinutes;
+                    var overtime = detail.overtimeInMinutes;
 
                     worked = getHumanReadableTextFromMinutes(worked);
                     overtime = getHumanReadableTextFromMinutes(overtime, true);
