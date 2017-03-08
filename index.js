@@ -173,8 +173,6 @@ const getOvertimeFromSession = function (session) {
     const workTimeInMinutes = getWorkTimeInMinutes(session);
 
     const actualWorkTime = workTimeInMinutes - breaksInMinutes;
-
-    console.log(workTimeInMinutes, breaksInMinutes, actualWorkTime, actualWorkTime - MINUTES_TO_WORK);
     return actualWorkTime - MINUTES_TO_WORK;
 };
 
