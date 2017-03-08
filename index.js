@@ -5,6 +5,7 @@ var request = require('request');
 var moment = require('moment');
 var R = require('ramda');
 var Table = require('cli-table');
+var chalk = require('chalk');
 
 var user = process.env.PAPERSHIFT_USER;
 var auth_token = process.env.PAPERSHIFT_TOKEN;
@@ -61,14 +62,20 @@ var getDifferenceInMinutesText = function (start, end, breakMinutes) {
     ].join(':');
 };
 
-var getHumanReadableTextFromMinutes = function (minutes) {
+var getHumanReadableTextFromMinutes = function (minutes, colored) {
     var duration = moment.duration(minutes, 'minutes');
     var negative = duration < 0;
 
-    return (negative ? '-' : '') + [
-            padLeft(Math.abs(duration.hours()), 2),
-            padLeft(Math.abs(duration.minutes()), 2)
-        ].join(':');
+    var value = [
+        padLeft(Math.abs(duration.hours()), 2),
+        padLeft(Math.abs(duration.minutes()), 2)
+    ].join(':');
+
+    if (colored) {
+        return chalk[negative ? 'red' : 'green'](value);
+    } else {
+        return (negative ? '-' : ' ') + value;
+    }
 };
 
 const getDifferenceInMinutes = function (start, end) {
@@ -113,7 +120,7 @@ var todaySummary = function (simple) {
                 if (start && end) {
                     var text = getHumanReadableTextFromMinutes(getDifferenceInMinutes(start, end) - breakMinutes);
                     var overtimeText = getHumanReadableTextFromMinutes(getDifferenceInMinutes(start, end) - MINUTES_TO_WORK);
-                    console.log(text, '('+ overtimeText + ')');
+                    console.log(text, '(' + overtimeText + ')');
                 } else {
                     console.error('Something went wrong');
                 }
@@ -209,10 +216,13 @@ const handleCommand = function (cmd) {
             var result = overtimeThisMonth(function (result) {
                 var table = new Table({
                     head: ['Date', 'Weekday', 'Worked', 'Overtime'],
-                    colWidths: [30, 30, 30, 30]
+                    colWidths: [12, 15, 9, 11],
+                    colAligns: ['middle', 'middle', 'middle', 'middle'],
+                    style: {compact: true, 'padding-left': 1, head: ['white']}
+
                 });
 
-                var details = R.sortBy(function(detail){
+                var details = R.sortBy(function (detail) {
                     return moment(detail.session.starts_at);
                 }, result.details);
 
@@ -224,7 +234,7 @@ const handleCommand = function (cmd) {
                     var overtime = detail.overtime;
 
                     worked = getHumanReadableTextFromMinutes(worked);
-                    overtime = getHumanReadableTextFromMinutes(overtime);
+                    overtime = getHumanReadableTextFromMinutes(overtime, true);
 
                     table.push([
                         date,
@@ -235,7 +245,7 @@ const handleCommand = function (cmd) {
                 }, details);
 
                 console.log(table.toString());
-                console.log('Overtime this month:', getHumanReadableTextFromMinutes(result.overtimeInMinutes));
+                console.log('Overtime this month:', getHumanReadableTextFromMinutes(result.overtimeInMinutes, true));
             });
 
             break;
