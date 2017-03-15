@@ -83,7 +83,7 @@ const getDifferenceInMinutes = function (start, end) {
     return Math.floor(Math.abs(duration.asMinutes()));
 };
 
-var todaySummary = function (simple) {
+var todayAction = function (simple) {
     var parameters = createParameters({
         range_start: moment().utc().toISOString(),
         range_end: moment().add(1, 'days').utc().toISOString()
@@ -211,62 +211,59 @@ var overtimeThisMonth = function (done) {
     });
 };
 
-const handleCommand = function (cmd) {
-    switch (cmd) {
-        case 'today':
-            todaySummary();
-            break;
-        case 'bitbar':
-            todaySummary(true);
-            break;
-        case 'overtime':
-        default:
-            overtimeThisMonth(function (result) {
-                var table = new Table({
-                    head: ['Date', 'Weekday', 'Worked', 'Overtime'],
-                    colWidths: [12, 15, 9, 11],
-                    colAligns: ['middle', 'middle', 'middle', 'middle'],
-                    style: {compact: true, 'padding-left': 1, head: ['white']}
-                });
+var monthAction = function () {
+    overtimeThisMonth(function (result) {
+        var table = new Table({
+            head: ['Date', 'Day', 'Begin', 'End', 'Work', 'Breaks', 'Over'],
+            colWidths: [12, 15, 9, 9, 9, 9, 9],
+            colAligns: ['middle', 'right', 'middle', 'middle', 'middle', 'middle', 'middle'],
+            style: {compact: true, 'padding-left': 1, head: ['white']}
+        });
 
-                var details = R.sortBy(function (detail) {
-                    return moment(detail.session.starts_at);
-                }, result.details);
+        var details = R.sortBy(function (detail) {
+            return moment(detail.session.starts_at);
+        }, result.details);
 
-                R.forEach(function (detail) {
-                    var session = detail.session;
-                    var date = moment(session.starts_at).utc(true).format('DD.MM.YYYY');
-                    var weekday = moment(session.starts_at).utc(true).format('dddd');
-                    var worked = getDifferenceInMinutes(moment(session.starts_at), session.ends_at ? moment(session.ends_at) : moment());
-                    worked -= detail.breaksInMinutes;
-                    var overtime = detail.overtimeInMinutes;
+        R.forEach(function (detail) {
+            var session = detail.session;
+            var start = moment(session.starts_at).utc(true);
+            var date = start.format('DD.MM.YYYY');
+            var weekday = start.format('dddd');
+            var end = (session.ends_at ? moment(session.ends_at) : moment()).utc(true);
+            var worked = getDifferenceInMinutes(start, end);
+            worked -= detail.breaksInMinutes;
+            var overtime = detail.overtimeInMinutes;
+            var breaks = getHumanReadableTextFromMinutes(detail.breaksInMinutes);
 
-                    worked = getHumanReadableTextFromMinutes(worked);
-                    overtime = getHumanReadableTextFromMinutes(overtime, true);
+            worked = getHumanReadableTextFromMinutes(worked);
+            overtime = getHumanReadableTextFromMinutes(overtime, true);
 
-                    table.push([
-                        date,
-                        weekday,
-                        worked,
-                        overtime
-                    ])
-                }, details);
+            table.push([
+                date,
+                weekday,
+                start.format('HH:mm'),
+                end.format('HH:mm'),
+                worked,
+                breaks,
+                overtime
+            ])
+        }, details);
 
-                console.log(table.toString());
-                console.log('Summary:', getHumanReadableTextFromMinutes(result.overtimeInMinutes, true));
-            });
-
-            break;
-    }
+        console.log(table.toString());
+        console.log('Summary:', getHumanReadableTextFromMinutes(result.overtimeInMinutes, true));
+    });
 };
 
 var pkg = require('./package.json');
 
 program.version(pkg.version)
-    .arguments('[cmd]')
-    .action(handleCommand)
-    .parse(process.argv);
+    .command('today')
+    .description('prints current day')
+    .action(todayAction);
 
-if (process.argv.length === 2) {
-    handleCommand('overtime');
-}
+program.version(pkg.version)
+    .command('month')
+    .description('prints an overview of the current month')
+    .action(monthAction);
+
+program.parse(process.argv);
