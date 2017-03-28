@@ -168,6 +168,10 @@ const getWorkTimeInMinutes = function (session) {
     return 0;
 };
 
+const getOvertimeFromMinutes = function (workTimeInMinutes, breaksInMinutes) {
+    return workTimeInMinutes - breaksInMinutes - MINUTES_TO_WORK;
+}
+
 const getOvertimeFromSession = function (session) {
     const breaksInMinutes = getBreaksInMinutes(session.breaks);
     const workTimeInMinutes = getWorkTimeInMinutes(session);
@@ -175,6 +179,52 @@ const getOvertimeFromSession = function (session) {
     const actualWorkTime = workTimeInMinutes - breaksInMinutes;
     return actualWorkTime - MINUTES_TO_WORK;
 };
+
+var fetchAllWorkingSessions = function (done) {
+    var sessions = [];
+
+    function next(nextUrl) {
+        if (nextUrl) {
+            var parameters = createParameters({
+                range_start: moment().startOf('year').utc(true).toISOString(),
+                range_end: moment().endOf('month').utc(true).toISOString()
+            });
+
+            request({
+                url: nextUrl,
+                qs: parameters,
+                headers: headers
+            }, function (error, response, body) {
+                var data = JSON.parse(body);
+
+                var details = R.map(function (session) {
+                    return {
+                        session: session,
+                        breaksInMinutes: getBreaksInMinutes(session.breaks),
+                        overtimeInMinutes: getOvertimeFromSession(session)
+                    };
+                }, data.working_sessions);
+
+                var overtimeInMinutes = R.reduce(function (acc, session) {
+                    acc += session.overtimeInMinutes;
+                    return acc;
+                }, 0, details);
+
+                sessions = sessions.concat(details);
+                if (data.next_page) {
+                    return next(data.next_page);
+                } else {
+                    var uniqSessions = R.uniqBy(function (session) {
+                        return session.session.id;
+                    }, sessions);
+                    return done(uniqSessions);
+                }
+            });
+        }
+    }
+
+    next(WORKING_SESSIONS);
+}
 
 var overtimeThisMonth = function (done) {
     console.log('Build summary...');
@@ -211,14 +261,9 @@ var overtimeThisMonth = function (done) {
     });
 };
 
-var monthAction = function () {
+var monthAction = function (cmd, options) {
     overtimeThisMonth(function (result) {
-        var table = new Table({
-            head: ['Date', 'Day', 'Begin', 'End', 'Work', 'Breaks', 'Over'],
-            colWidths: [12, 15, 9, 9, 9, 9, 9],
-            colAligns: ['middle', 'right', 'middle', 'middle', 'middle', 'middle', 'middle'],
-            style: {compact: true, 'padding-left': 1, head: ['white']}
-        });
+        var table = createTable();
 
         var details = R.sortBy(function (detail) {
             return moment(detail.session.starts_at);
@@ -254,16 +299,127 @@ var monthAction = function () {
     });
 };
 
+var createTable = function () {
+    return new Table({
+        head: ['Date', 'Day', 'Begin', 'End', 'Work', 'Breaks', 'Over', 'Sessions'],
+        colWidths: [12, 15, 9, 9, 9, 9, 9, 10],
+        colAligns: ['middle', 'right', 'middle', 'middle', 'middle', 'middle', 'middle', 'middle'],
+        style: {
+            compact: true,
+            'padding-left': 1,
+            head: ['white']
+        }
+    });
+}
+
+var overviewAction = function (cmd, options) {
+    fetchAllWorkingSessions(function (sessions) {
+        var table = createTable();
+
+        var days = R.sortBy(function (detail) {
+            return moment(detail.session.starts_at);
+        }, sessions);
+
+        days = R.map(function (e) {
+            var session = e.session;
+            var start = moment(session.starts_at).utc(true);
+            var date = start.format('DD.MM.YYYY');
+            var weekday = start.format('dddd');
+            var end = (session.ends_at ? moment(session.ends_at) : moment()).utc(true);
+            var worked = getDifferenceInMinutes(start, end);
+            worked -= e.breaksInMinutes;
+            var overtime = e.overtimeInMinutes;
+            var breaks = e.breaksInMinutes;
+
+            return {
+                start: start,
+                end: end,
+                date: date,
+                weekday: weekday,
+                worked: worked,
+                overtime: overtime,
+                breaks: breaks
+            }
+        }, days);
+
+        days = R.values(R.groupBy(function (e) {
+            return e.date;
+        }, days));
+
+        days = R.map(function (current) {
+            if (R.is(Array, current) && current.length === 1) {
+                return current[0];
+            } else {
+                return current;
+            }
+        }, days);
+
+        days = R.reduce(function (acc, current) {
+            var sesssionCount = 1;
+
+            if (R.is(Array, current)) {
+                sesssionCount = current.length;
+
+                current = R.reduce(function (acc, current) {
+                    var calc = {
+                        start: acc.start ? (current.start < acc.start ? current.start : acc.start) : current.start,
+                        end: acc.end ? (R.max(current.end, acc.end)) : current.end,
+                        worked: (acc.worked || 0) + current.worked,
+                        breaks: (acc.breaks || 0) + current.breaks,
+                    }
+                    calc.overtime = getOvertimeFromMinutes(calc.worked, calc.breaks)
+                    return R.merge(acc, calc);
+                }, {
+                    weekday: R.head(current).weekday,
+                    date: R.head(current).date
+                }, current);
+
+                current.multipleSessions = sesssionCount;
+            }
+            acc.push(current);
+
+            return acc;
+        }, [], days);
+
+        R.forEach(function (detail) {
+            worked = getHumanReadableTextFromMinutes(detail.worked);
+
+            table.push([
+                detail.date,
+                detail.weekday,
+                detail.start.format('HH:mm'),
+                detail.end.format('HH:mm'),
+                worked,
+                detail.breaks > 0 ? getHumanReadableTextFromMinutes(detail.breaks) : '',
+                detail.overtime !== 0 ? getHumanReadableTextFromMinutes(detail.overtime, true) : '',
+                detail.multipleSessions || ''
+            ])
+        }, days);
+
+        var overtimeInMinutes = R.reduce(function (acc, session) {
+            acc += session.overtime;
+            return acc;
+        }, 0, days);
+
+        console.log(table.toString());
+        console.log('Summary:', getHumanReadableTextFromMinutes(overtimeInMinutes, true));
+    });
+};
+
 var pkg = require('./package.json');
 
-program.version(pkg.version)
-    .command('today')
+program.version(pkg.version);
+
+program.command('today')
     .description('prints current day')
     .action(todayAction);
 
-program.version(pkg.version)
-    .command('month')
-    .description('prints an overview of the current month')
+program.command('overview')
+    .description('prints an overview')
+    .action(overviewAction);
+
+program.command('month')
+    .description('prints an overview for the current month')
     .action(monthAction);
 
 program.parse(process.argv);
