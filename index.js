@@ -139,8 +139,14 @@ var fetchAllWorkingSessions = function (options, done) {
             request({
                 url: nextUrl,
                 qs: parameters,
-                headers: headers
+                headers: headers,
+                rejectUnauthorized: false
             }, function (error, response, body) {
+                if (error) {
+                    console.error(error);
+                    return;
+                }
+
                 var data = JSON.parse(body);
 
                 var details = R.map(function (session) {
@@ -350,6 +356,6 @@ program.command('month')
 
 program.parse(process.argv);
 
-if(process.argv.length === 2){
+if (process.argv.length === 2) {
     program.help();
 }
