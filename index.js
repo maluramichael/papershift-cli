@@ -6,9 +6,28 @@ var moment = require('moment');
 var R = require('ramda');
 var Table = require('cli-table');
 var chalk = require('chalk');
+var fs = require('fs');
+var path = require('path');
 
 var user = process.env.PAPERSHIFT_USER;
 var auth_token = process.env.PAPERSHIFT_TOKEN;
+
+if (!user || !auth_token) {
+    var p = path.join(process.env['HOME'], '.papershift-cli');
+    if (fs.existsSync(p)) {
+        var content = fs.readFileSync(p).toString();
+        var credentials = JSON.parse(content);
+        user = credentials.user;
+        auth_token = credentials.auth_token;
+    } else {
+        fs.closeSync(fs.openSync(p, 'w'));
+        fs.writeFileSync(p, JSON.stringify({
+            user: '',
+            auth_token: ''
+        }));
+        console.error('Update', p, 'and restart the papershift-cli');
+    }
+}
 
 if (!user) {
     console.error('PAPERSHIFT_USER Environment variable is not defiend');
@@ -322,19 +341,31 @@ var todayAction = function (cmd, options) {
         from: moment().startOf('day').utc(true).toISOString(),
         to: moment().endOf('day').utc(true).toISOString()
     }, function (sessions) {
-        var table = createTable();
-        var days = mapSessionsToDays(sessions);
+        if (cmd.short) {
+            var today = R.head(mapSessionsToDays(sessions));
 
-        R.forEach(function (row) {
-            addTableRow(table, row)
-        }, days);
+            var start = today.start.format('HH:mm');
+            var end = today.end.format('HH:mm');
+            var worked = getHumanReadableTextFromMinutes(today.worked);
+            var breaks = today.breaks > 0 ? getHumanReadableTextFromMinutes(today.breaks, false) : getHumanReadableTextFromMinutes(0);
+            var overtime = today.overtime !== 0 ? getHumanReadableTextFromMinutes(today.overtime, false) : getHumanReadableTextFromMinutes(0);
 
-        var overtimeInMinutes = R.reduce(function (acc, session) {
-            acc += session.overtime;
-            return acc;
-        }, 0, days);
+            console.log(start, worked, breaks, overtime);
+        } else {
+            var table = createTable();
+            var days = mapSessionsToDays(sessions);
 
-        console.log(table.toString());
+            R.forEach(function (row) {
+                addTableRow(table, row)
+            }, days);
+
+            var overtimeInMinutes = R.reduce(function (acc, session) {
+                acc += session.overtime;
+                return acc;
+            }, 0, days);
+
+            console.log(table.toString());
+        }
     });
 };
 
@@ -344,6 +375,7 @@ program.version(pkg.version);
 
 program.command('today')
     .description('prints current day')
+    .option('-s, --short')
     .action(todayAction);
 
 program.command('overview')
