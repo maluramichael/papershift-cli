@@ -17,15 +17,14 @@ if (!user || !auth_token) {
     if (fs.existsSync(p)) {
         var content = fs.readFileSync(p).toString();
         var credentials = JSON.parse(content);
-        user = credentials.user;
-        auth_token = credentials.auth_token;
+        user = user || credentials.user;
+        auth_token = auth_token || credentials.auth_token;
     } else {
         fs.closeSync(fs.openSync(p, 'w'));
         fs.writeFileSync(p, JSON.stringify({
             user: '',
             auth_token: ''
         }));
-        console.error('Update', p, 'and restart the papershift-cli');
     }
 }
 
