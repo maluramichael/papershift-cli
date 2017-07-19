@@ -80,7 +80,7 @@ var getDifferenceInMinutesText = function (start, end, breakMinutes) {
     ].join(':');
 };
 
-var getHumanReadableTextFromMinutes = function (minutes, colored) {
+var getHumanReadableTextFromMinutes = function (minutes, colored = false) {
     var duration = moment.duration(minutes, 'minutes');
     var negative = duration < 0;
 
@@ -278,15 +278,15 @@ var mapSessionsToDays = function (sessions) {
     return days;
 }
 
-var addTableRow = function (table, detail) {
+var addTableRow = function (table, detail, colored = false) {
     table.push([
         detail.date,
         detail.weekday,
         detail.start.format('HH:mm'),
         detail.end.format('HH:mm'),
-        getHumanReadableTextFromMinutes(detail.worked),
-        detail.breaks > 0 ? getHumanReadableTextFromMinutes(detail.breaks) : '',
-        detail.overtime !== 0 ? getHumanReadableTextFromMinutes(detail.overtime, true) : '',
+        getHumanReadableTextFromMinutes(detail.worked,colored),
+        detail.breaks > 0 ? getHumanReadableTextFromMinutes(detail.breaks,colored) : '',
+        detail.overtime !== 0 ? getHumanReadableTextFromMinutes(detail.overtime, colored) : '',
         detail.multipleSessions || ''
     ])
 }
@@ -335,19 +335,19 @@ var overviewAction = function (cmd, options) {
     });
 };
 
-var todayAction = function (cmd, options) {
+var todayAction = function (cmd = { parent:{} }, options) {
     fetchAllWorkingSessions({
         from: moment().startOf('day').utc(true).toISOString(),
         to: moment().endOf('day').utc(true).toISOString()
     }, function (sessions) {
-        if (cmd.short) {
+        if (cmd.parent.short) {
             var today = R.head(mapSessionsToDays(sessions));
 
             var start = today.start.format('HH:mm');
             var end = today.end.format('HH:mm');
             var worked = getHumanReadableTextFromMinutes(today.worked);
-            var breaks = today.breaks > 0 ? getHumanReadableTextFromMinutes(today.breaks, false) : getHumanReadableTextFromMinutes(0);
-            var overtime = today.overtime !== 0 ? getHumanReadableTextFromMinutes(today.overtime, false) : getHumanReadableTextFromMinutes(0);
+            var breaks = today.breaks > 0 ? getHumanReadableTextFromMinutes(today.breaks) : getHumanReadableTextFromMinutes(0);
+            var overtime = today.overtime !== 0 ? getHumanReadableTextFromMinutes(today.overtime, cmd.parent.colored) : getHumanReadableTextFromMinutes(0);
 
             console.log(start, worked, breaks, overtime);
         } else {
@@ -355,7 +355,7 @@ var todayAction = function (cmd, options) {
             var days = mapSessionsToDays(sessions);
 
             R.forEach(function (row) {
-                addTableRow(table, row)
+                addTableRow(table, row, cmd.parent.colored)
             }, days);
 
             var overtimeInMinutes = R.reduce(function (acc, session) {
@@ -370,11 +370,12 @@ var todayAction = function (cmd, options) {
 
 var pkg = require('./package.json');
 
-program.version(pkg.version);
+program.version(pkg.version)
+    .option('-c, --colored')
+    .option('-s, --short');
 
 program.command('today')
     .description('prints current day')
-    .option('-s, --short')
     .action(todayAction);
 
 program.command('overview')
@@ -388,5 +389,5 @@ program.command('month')
 program.parse(process.argv);
 
 if (process.argv.length === 2) {
-    program.help();
+    todayAction();
 }
