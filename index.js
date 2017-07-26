@@ -322,7 +322,7 @@ var overviewAction = function (cmd, options) {
         var days = mapSessionsToDays(sessions);
 
         R.forEach(function (row) {
-            addTableRow(table, row)
+            addTableRow(table, row, cmd.parent.colored)
         }, days);
 
         var overtimeInMinutes = R.reduce(function (acc, session) {
@@ -331,7 +331,7 @@ var overviewAction = function (cmd, options) {
         }, 0, days);
 
         console.log(table.toString());
-        console.log('Summary:', getHumanReadableTextFromMinutes(overtimeInMinutes, true));
+        console.log('Summary:', getHumanReadableTextFromMinutes(overtimeInMinutes, cmd.parent.colored));
     });
 };
 
