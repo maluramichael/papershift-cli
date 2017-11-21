@@ -284,8 +284,8 @@ var addTableRow = function (table, detail, colored = false) {
         detail.weekday,
         detail.start.format('HH:mm'),
         detail.end.format('HH:mm'),
-        getHumanReadableTextFromMinutes(detail.worked,colored),
-        detail.breaks > 0 ? getHumanReadableTextFromMinutes(detail.breaks,colored) : '',
+        getHumanReadableTextFromMinutes(detail.worked, colored),
+        detail.breaks > 0 ? getHumanReadableTextFromMinutes(detail.breaks, colored) : '',
         detail.overtime !== 0 ? getHumanReadableTextFromMinutes(detail.overtime, colored) : '',
         detail.multipleSessions || ''
     ])
@@ -333,10 +333,17 @@ var overviewAction = function (cmd, options) {
 
         console.log(table.toString());
         console.log('Summary:', getHumanReadableTextFromMinutes(overtimeInMinutes, cmd.parent.colored));
+        
+        var lastSession = R.last(days);
+        if (lastSession.overtime < 0) {
+            console.log('End', moment().add(Math.abs(lastSession.overtime), 'minutes').format('HH:mm'));
+        }
     });
 };
 
-var todayAction = function (cmd = { parent:{} }, options) {
+var todayAction = function (cmd = {
+    parent: {}
+}, options) {
     fetchAllWorkingSessions({
         from: moment().startOf('day').utc(true).toISOString(),
         to: moment().endOf('day').utc(true).toISOString()
@@ -365,6 +372,10 @@ var todayAction = function (cmd = { parent:{} }, options) {
             }, 0, days);
 
             console.log(table.toString());
+
+            if (overtimeInMinutes < 0) {
+                console.log('End', moment().add(Math.abs(overtimeInMinutes), 'minutes').format('HH:mm'));
+            }
         }
     });
 };
